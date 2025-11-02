@@ -41,11 +41,6 @@
     <div id="wochentabelle"></div>
   </section>
 
-
-
-
-
-
 <footer class="container"><small class="hint">Version v10.7</small></footer>
 </main>
 
@@ -58,6 +53,20 @@
   const store = new Store();
   await store.ready;
 
+  // Hilfen nur für Anzeige des Fortschritts (keine Änderung am Punktesystem)
+  function nextThreshold(sum){
+    if (sum < 10) return 10;
+    if (sum < 20) return 20;
+    if (sum < 30) return 30;
+    return null; // Flow-Master: kein nächstes Ziel
+  }
+  function lowerBound(level){
+    if (level === "Reader") return 10;
+    if (level === "Speedster") return 20;
+    if (level === "Flow-Master") return 30;
+    return 0; // Starter
+  }
+
   async function renderRanking() {
     const tbody = q('#ranking tbody');
     tbody.innerHTML = "";
@@ -68,6 +77,12 @@
       const sum = weeks.reduce((a, b) => a + (b.punkte_gruppe_normalisiert || 0), 0);
       const last = weeks.sort((a,b)=>b.woche-a.woche)[0];
       const level = calc.levelForCumulative(sum);
+
+      // Fortschritt zum nächsten Level (rein Anzeige)
+      const lb = lowerBound(level);
+      const nt = nextThreshold(sum);
+      const progress = (nt === null) ? 100 : Math.max(0, Math.min(100, ((sum - lb) / 10) * 100));
+      
       const recentLevelWeek = calc.lastLevelUpWeek(weeks);
       const medianW = calc.medianWcpmLastWeek(weeks);
       rows.push({
@@ -75,6 +90,8 @@
         level,
         sum,
         lastWeek: last ? last.punkte_gruppe_normalisiert : 0,
+        progress,
+        progressNext: nt,
         tie: { recentLevelWeek, medianWCPM: medianW }
       });
     }
@@ -87,7 +104,21 @@
     for (const r of rows) {
       const tr = document.createElement('tr');
       const cls = r.level==="Flow-Master" ? "badge-flow" : r.level==="Speedster" ? "badge-speedster" : r.level==="Reader" ? "badge-reader" : "badge-starter";
-      tr.innerHTML = `<td>${r.gruppe}</td><td><span class="badge ${cls}">${r.level}</span></td><td>${r.sum.toFixed(2)}</td><td>${r.lastWeek.toFixed(2)}</td>`;
+      // Level-Spalte inkl. Fortschrittsbalken (nur Anzeige)
+      const nextName = (r.level==='Starter') ? 'Reader' : (r.level==='Reader' ? 'Speedster' : 'Flow-Master');
+      const restText = (r.progressNext===null) ? 'Max-Level erreicht' : `Noch ${(r.progressNext - r.sum).toFixed(2)} Punkte bis ${nextName}`;
+      tr.innerHTML = `
+        <td>${r.gruppe}</td>
+        <td class="level-cell">
+          <span class="badge ${cls}">${r.level}</span>
+          <div class="level-progress" title="Fortschritt zum nächsten Level">
+            <div class="track"><i class="fill" style="width:${r.progress}%"></i></div>
+            <div class="meta">${restText}</div>
+          </div>
+        </td>
+        <td>${r.sum.toFixed(2)}</td>
+        <td>${r.lastWeek.toFixed(2)}</td>
+      `;
       tbody.appendChild(tr);
     }
   }

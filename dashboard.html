@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Speedlesen – Dashboard</title>
-<link rel="stylesheet" href="./styles/base.css?v=10.5">
+<link rel="stylesheet" href="./styles/base.css?v=10.6">
 <body class="theme-warm">
 <header class="container">
   <h1>Speedlesen – Dashboard</h1>
@@ -44,14 +44,15 @@
 
 
 
-<footer class="container"><small class="hint">Version v10.5</small></footer>
+
+<footer class="container"><small class="hint">Version v10.6</small></footer>
 </main>
 
 <script type="module">
-  import { Store } from "./scripts/store.js?v=10.5";
-  import { calc } from "./scripts/calculations.js?v=10.5";
-  import { toCSV } from "./scripts/export.js?v=10.5";
-  import { ui, q } from "./scripts/ui-utils.js?v=10.5";
+  import { Store } from "./scripts/store.js?v=10.6";
+  import { calc } from "./scripts/calculations.js?v=10.6";
+  import { toCSV } from "./scripts/export.js?v=10.6";
+  import { ui, q } from "./scripts/ui-utils.js?v=10.6";
 
   const store = new Store();
   await store.ready;
@@ -127,6 +128,17 @@
     });
     table.appendChild(tbody);
     host.appendChild(table);
+    /* v10.6 persons safe render */
+    host.querySelectorAll('tbody tr').forEach((tr,i)=>{
+      const w = weeks[i]; if(!w) return;
+      const td = tr.children[2];
+      const text = (w.personen||[]).map(p=>{
+        const wpm = (typeof p.wpm==='number')? p.wpm.toFixed(2) : '—';
+        const err = (typeof p.fehler==='number')? p.fehler : '—';
+        return `${p.name}: ${wpm} WPM, Fehler ${err}`;
+      }).join(', ');
+      td.textContent = text;
+    });
   }
 
   async function exportCSV(){

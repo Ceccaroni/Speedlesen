@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="de">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Speedlesen – Dashboard</title>
+<link rel="stylesheet" href="./styles/base.css">
+<body class="theme-warm">
+<header class="container">
+  <h1>Speedlesen – Dashboard</h1>
+  <nav>
+    <button id="theme-toggle" class="btn-ghost" aria-pressed="false" title="Farbschema umschalten">Darstellung</button> 
+    <a href="./index.html">Start</a>
+    <a href="./erfassung.html">Erfassung</a>
+  </nav>
+</header>
+<noscript><div class="container"><p style="border:1px solid #000;padding:8px"><strong>Hinweis:</strong> JavaScript ist deaktiviert. Diese Seite benötigt es für Erfassung und Auswertung.</p></div></noscript>
+
+<main class="container">
+  <section>
+    <h2>Ranking (normalisiert)</h2>
+    <button id="btn-export" class="btn-primary">CSV exportieren</button>
+    <button id="btn-reset" class="btn-danger">Daten zurücksetzen</button>
+    <table id="ranking">
+      <thead><tr><th>Gruppe</th><th>Level</th><th>Kumulierte Punkte</th><th>Letzte Woche</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <p class="hint">Punkte sind pro Woche auf Gruppengrösse 2 normalisiert.</p>
+    <p class="legend">Tie-Break: jüngster Level-Aufstieg → aktueller Median-WCPM → alphabetisch.</p>
+    <p class="legend">Legende Level:
+      <span class="badge badge-starter">Starter</span>
+      <span class="badge badge-reader">Reader</span>
+      <span class="badge badge-speedster">Speedster</span>
+      <span class="badge badge-flow">Flow-Master</span>
+    </p>
+  </section>
+
+  <section>
+    <h2>Wochenansicht</h2>
+    <label for="gruppe-wahl">Gruppe</label>
+    <select id="gruppe-wahl"></select>
+    <div id="wochentabelle"></div>
+  </section>
+</main>
+
+<script type="module">
+  import { Store } from "./scripts/store.js";
+  import { calc } from "./scripts/calculations.js";
+  import { toCSV } from "./scripts/export.js";
+  import { ui, q } from "./scripts/ui-utils.js";
+
+  const store = new Store();
+  await store.ready;
+
+  async function renderRanking() {
+    const tbody = q('#ranking tbody');
+    tbody.innerHTML = "";
+    const gruppen = await store.getGroups();
+    const rows = [];
+    for (const g of gruppen) {
+      const weeks = await store.getGroupWeeks(g.id);
+      const sum = weeks.reduce((a, b) => a + (b.punkte_gruppe_normalisiert || 0), 0);
+      const last = weeks.sort((a,b)=>b.woche-a.woche)[0];
+      const level = calc.levelForCumulative(sum);
+      const recentLevelWeek = calc.lastLevelUpWeek(weeks);
+      const medianW = calc.medianWcpmLastWeek(weeks);
+      rows.push({
+        gruppe: g.id,
+        level,
+        sum,
+        lastWeek: last ? last.punkte_gruppe_normalisiert : 0,
+        tie: { recentLevelWeek, medianWCPM: medianW }
+      });
+    }
+    rows.sort((a,b)=> 
+      b.sum - a.sum ||
+      b.tie.recentLevelWeek - a.tie.recentLevelWeek ||
+      b.tie.medianWCPM - a.tie.medianWCPM ||
+      (a.gruppe > b.gruppe ? 1 : -1)
+    );
+    for (const r of rows) {
+      const tr = document.createElement('tr');
+      const cls = r.level==="Flow-Master" ? "badge-flow" : r.level==="Speedster" ? "badge-speedster" : r.level==="Reader" ? "badge-reader" : "badge-starter";
+      tr.innerHTML = `<td>${r.gruppe}</td><td><span class="badge ${cls}">${r.level}</span></td><td>${r.sum.toFixed(2)}</td><td>${r.lastWeek.toFixed(2)}</td>`;
+      tbody.appendChild(tr);
+    }
+  }
+
+  async function renderWeeks() {
+    const sel = q('#gruppe-wahl');
+    const gruppen = await store.getGroups();
+    sel.innerHTML = "";
+    for (const g of gruppen) {
+      const opt = document.createElement('option');
+      opt.value = g.id;
+      opt.textContent = g.id;
+      sel.appendChild(opt);
+    }
+    sel.addEventListener('change', async () => {
+      const weeks = await store.getGroupWeeks(sel.value);
+      drawWeeks(weeks);
+    });
+    if (gruppen[0]) {
+      const weeks = await store.getGroupWeeks(gruppen[0].id);
+      sel.value = gruppen[0].id;
+      drawWeeks(weeks);
+    }
+  }
+
+  function drawWeeks(weeks) {
+    const host = q('#wochentabelle');
+    host.innerHTML = "";
+    const table = document.createElement('table');
+    const thead = document.createElement('thead');
+    thead.innerHTML = "<tr><th>Woche</th><th>Punkte (norm.)</th><th>Personen</th></tr>";
+    table.appendChild(thead);
+    const tbody = document.createElement('tbody');
+    weeks.sort((a,b)=>a.woche-b.woche).forEach(w => {
+      const personen = (w.personen || []).map(p => `${p.name}: ${p.punkte_person}`).join(", ");
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${w.woche}</td><td>${(w.punkte_gruppe_normalisiert||0).toFixed(2)}</td><td>${personen}</td>`;
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    host.appendChild(table);
+  }
+
+  async function exportCSV(){
+    const rows = [];
+    const gruppen = await store.getGroups();
+    for (const g of gruppen){
+      const weeks = await store.getGroupWeeks(g.id);
+      for (const w of weeks){
+        for (const p of (w.personen||[])){
+          rows.push({
+          woche: w.woche,
+          gruppe: g.id,
+          anzahl: w.anzahl_personen,
+          name: p.name,
+          woerter3: p.woerter3,
+          wpm: p.wpm,
+          wps: p.wps,
+          fehler: p.fehler,
+          wcpm: p.wcpm, // "WCPM (3-Min)"
+          flagA: w.flags?.A_WPM_verbessert || false,
+          flagB: w.flags?.B_Fehler_reduziert || false,
+          flagC: w.flags?.Coaching || false,
+          flagD: w.flags?.Mission || false,
+          punkte_roh: w.punkte_gruppe_roh,
+          punkte_norm: w.punkte_gruppe_normalisiert,
+          punkte_kum: w.punkte_gruppe_kumuliert
+        });
+        }
+        rows.push({
+          woche: w.woche,
+          gruppe: g.id,
+          anzahl: w.anzahl_personen,
+          name: p.name,
+          woerter3: p.woerter3,
+          wpm: p.wpm,
+          wps: p.wps,
+          fehler: p.fehler,
+          wcpm: p.wcpm, // "WCPM (3-Min)"
+          flagA: w.flags?.A_WPM_verbessert || false,
+          flagB: w.flags?.B_Fehler_reduziert || false,
+          flagC: w.flags?.Coaching || false,
+          flagD: w.flags?.Mission || false,
+          punkte_roh: w.punkte_gruppe_roh,
+          punkte_norm: w.punkte_gruppe_normalisiert,
+          punkte_kum: w.punkte_gruppe_kumuliert
+        });
+      }
+    }
+    const csv = toCSV(rows);
+    const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = "speedlesen_export.csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+  q('#btn-export').addEventListener('click', exportCSV);
+
+  function resetData(){
+    if (!confirm("Alle lokalen Daten löschen? (Gruppen, Mitglieder, Messungen)")) return;
+    try{
+      const req = indexedDB.deleteDatabase('speedlesen_db_v1');
+      req.onsuccess = ()=>{
+        localStorage.removeItem('speedlesen_db_v1');
+        location.reload();
+      };
+      req.onerror = ()=>{
+        localStorage.removeItem('speedlesen_db_v1');
+        location.reload();
+      };
+    }catch(e){
+      localStorage.removeItem('speedlesen_db_v1');
+      location.reload();
+    }
+  }
+  q('#btn-reset').addEventListener('click', resetData);
+
+  await renderRanking();
+  await renderWeeks();
+</script>
+<script>
+  (function(){
+    const key = "speedlesen_theme";
+    const saved = localStorage.getItem(key);
+    if (saved){ document.documentElement.dataset.theme = saved; }
+    document.addEventListener("click", (e)=>{
+      if (e.target && e.target.id==="theme-toggle"){
+        const next = (document.documentElement.dataset.theme==="dark") ? "light" : "dark";
+        document.documentElement.dataset.theme = next;
+        localStorage.setItem(key, next);
+        e.target.setAttribute("aria-pressed", next==="dark");
+      }
+    });
+  })();
+</script>
+</body>
+</html>

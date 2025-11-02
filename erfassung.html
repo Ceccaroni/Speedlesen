@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="de">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Speedlesen – Erfassung</title>
+<link rel="stylesheet" href="./styles/base.css">
+<body class="theme-warm">
+<header class="container">
+  <h1>Speedlesen – Erfassung</h1>
+  <nav>
+    <button id="theme-toggle" class="btn-ghost" aria-pressed="false" title="Farbschema umschalten">Darstellung</button> 
+    <a href="./index.html">Start</a>
+    <a href="./dashboard.html">Dashboard</a>
+  </nav>
+</header>
+<noscript><div class="container"><p style="border:1px solid #000;padding:8px"><strong>Hinweis:</strong> JavaScript ist deaktiviert. Diese Seite benötigt es für Erfassung und Auswertung.</p></div></noscript>
+
+<main class="container">
+  <section>
+    <p class="hint">Pro Person werden WPM und Fehler erfasst; die App berechnet WCPM (3-Min) und Punkte je Person sowie Gruppen-Punkte (roh/normalisiert).</p>
+    <label for="gruppe-select">Gruppe</label>
+    <select id="gruppe-select"></select>
+
+    <label for="woche">Woche</label>
+    <input id="woche" type="number" min="1" max="52" value="1">
+
+    <div id="inputs"></div>
+
+    <div class="grid">
+      <div class="card">
+        <label><input type="checkbox" id="coaching"> Coaching-Qualität erfüllt</label>
+        <p class="hint">+2 Punkte, wenn im Teamcoaching die Qualitätskriterien erfüllt sind.</p>
+      </div>
+      <div class="card">
+        <label><input type="checkbox" id="mission"> Mission erfüllt</label>
+        <p class="hint">+3 Punkte, wenn die Wochenmission erfüllt ist.</p>
+      </div>
+    </div>
+
+    <button id="btn-speichern" class="btn-success">Messung speichern</button>
+  </section>
+
+  <section>
+    <h2>Letzte Erfassung</h2>
+    <p class="hint">WCPM (3-Min) = (WPM − Fehler) / 3 · Punkte: 10/8/6/4/2/0</p>
+    <pre id="preview"></pre>
+  </section>
+</main>
+
+<script type="module">
+  import { Store } from "./scripts/store.js";
+  import { calc } from "./scripts/calculations.js";
+  import { ui, q } from "./scripts/ui-utils.js";
+
+  const store = new Store();
+  await store.ready;
+
+  const sel = q('#gruppe-select');
+const woche = q('#woche');
+const inputs = q('#inputs');
+const preview = q('#preview');
+const coaching = q('#coaching');
+const mission = q('#mission');
+
+  async function loadGroups() {
+    sel.innerHTML = "";
+    const gruppen = await store.getGroups();
+    for (const g of gruppen) {
+      const opt = document.createElement('option');
+      opt.value = g.id;
+      opt.textContent = g.id;
+      sel.appendChild(opt);
+    }
+    await renderInputs();
+  }
+
+  async function renderInputs() {
+    inputs.innerHTML = "";
+    const gruppeId = sel.value;
+    if (!gruppeId) return;
+    const mitglieder = await store.getMembersByGroup(gruppeId);
+    const groupBox = document.createElement('div');
+    groupBox.className = "grid";
+    mitglieder.forEach((m, idx) => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <h3>${m.alias}</h3>
+        <label>Wörter (3-Min) <input type="number" name="w3_${idx}" min="0" step="1"></label>
+        <label>Fehler <input type="number" name="err_${idx}" min="0" step="1" value="0"></label>
+        <div class="hint" id="calc_${idx}">WPM: — · WPS: — · WCPM (3-Min): —</div>
+      `;
+      groupBox.appendChild(card);
+    });
+    inputs.appendChild(groupBox);
+    // Live-Update
+    groupBox.addEventListener('input', (e)=>{
+      const cards = Array.from(groupBox.querySelectorAll('.card'));
+      cards.forEach((c, i)=>{
+        const w3 = parseFloat(c.querySelector(`[name="w3_${i}"]`)?.value || "0");
+        const fe = parseFloat(c.querySelector(`[name="err_${i}"]`)?.value || "0");
+        const wpm = calc.wpm(w3);
+        const wps = calc.wps(w3);
+        const wcpm = calc.wcpm3(wpm, fe);
+        c.querySelector(`#calc_${i}`).textContent = `WPM: ${wpm.toFixed(2)} · WPS: ${wps.toFixed(2)} · WCPM (3-Min): ${wcpm.toFixed(2)}`;
+      });
+    });
+    const info = document.createElement('p');
+    info.textContent = `Fair-Play aktiv: Gruppen-Punkte werden auf Gruppengrösse 2 normalisiert.`;
+    inputs.appendChild(info);
+  }
+
+  sel.addEventListener('change', renderInputs);
+
+  q('#btn-speichern').addEventListener('click', async () => {
+    const gruppeId = sel.value;
+    const mitglieder = await store.getMembersByGroup(gruppeId);
+    const w = parseInt(woche.value, 10);
+    const personen = [];
+
+    // Build current persons array with computed metrics
+    mitglieder.forEach((m, idx) => {
+      const w3 = parseFloat(q(`[name="w3_${idx}"]`).value || "0");
+      const fe = parseFloat(q(`[name="err_${idx}"]`).value || "0");
+      const wpm = calc.wpm(w3);
+      const wps = calc.wps(w3);
+      const wcpm3 = calc.wcpm3(wpm, fe);
+      personen.push({ name: m.alias, woerter3: w3, wpm, wps, fehler: fe, wcpm: wcpm3 });
+    });
+
+    // Get previous week for A/B checks (baseline: Woche 1 -> 0 Punkte)
+    const prevWeeks = await store.getGroupWeeks(gruppeId);
+    const prev = prevWeeks.find(x => x.woche === (w - 1));
+
+    let punkte_roh = 0, flagA=false, flagB=false, flagC=false, flagD=false;
+    if (w > 1 && prev){
+      const res = calc.teamPoints(prev.personen, personen, coaching.checked, mission.checked);
+      punkte_roh = res.roh; flagA = res.flagA; flagB = res.flagB; flagC = res.flagC; flagD = res.flagD;
+    } else {
+      // Woche 1 = 0, Flags nur aus Coaching/Mission nicht zählend
+      punkte_roh = 0; flagA=false; flagB=false; flagC=!!coaching.checked; flagD=!!mission.checked;
+    }
+    const punkte_gruppe_normalisiert = calc.normalizeTeamPoints(punkte_roh, mitglieder.length);
+
+    // Kumuliert neu berechnen auf Basis Team-Punkte
+    const kumuliert = (prevWeeks.reduce((a,b)=>a+(b.punkte_gruppe_normalisiert||0),0) + punkte_gruppe_normalisiert);
+
+    const messung = {
+      id: `${gruppeId}_W${w}`,
+      gruppe_id: gruppeId,
+      woche: w,
+      anzahl_personen: mitglieder.length,
+      personen,
+      punkte_gruppe_roh: punkte_roh,
+      punkte_gruppe_normalisiert,
+      punkte_gruppe_kumuliert: kumuliert,
+      flags: { A_WPM_verbessert: flagA, B_Fehler_reduziert: flagB, Coaching: !!coaching.checked, Mission: !!mission.checked },
+      timestamp: Date.now()
+    };
+
+    await store.saveMeasurement(messung);
+    preview.textContent = JSON.stringify(messung, null, 2);
+    ui.toast("Messung gespeichert.");
+  });
+
+  await loadGroups();
+</script>
+<script>
+  (function(){
+    const key = "speedlesen_theme";
+    const saved = localStorage.getItem(key);
+    if (saved){ document.documentElement.dataset.theme = saved; }
+    document.addEventListener("click", (e)=>{
+      if (e.target && e.target.id==="theme-toggle"){
+        const next = (document.documentElement.dataset.theme==="dark") ? "light" : "dark";
+        document.documentElement.dataset.theme = next;
+        localStorage.setItem(key, next);
+        e.target.setAttribute("aria-pressed", next==="dark");
+      }
+    });
+  })();
+</script>
+</body>
+</html>

@@ -105,3 +105,14 @@ a:focus{outline:none; box-shadow: 0 0 0 3px rgba(10,132,255,.25)}
 @media (max-width: 900px){
   .grid-2{grid-template-columns:1fr}
 }
+
+
+.settings{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.legend-panel{margin-top:10px}
+.legend-card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;max-width:720px}
+.progress{height:10px;background:rgba(0,0,0,.08);border-radius:999px;overflow:hidden}
+.progress > i{display:block;height:100%;background:linear-gradient(90deg, var(--accent), var(--accent-2));width:0%}
+.delta-up{color:#34c759;font-weight:700}
+.delta-flat{color:#6b7280}
+.delta-down{color:#ff3b30;font-weight:700}
+.streak{font-weight:700}

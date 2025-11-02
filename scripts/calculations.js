@@ -10,7 +10,7 @@ export const calc = {
 
   // Team-Punkte (A–D) ab Woche 2, max 10
   // prevPersons/currentPersons: Arrays mit {name,wpm,fehler,wcpm,...}
-  teamPoints(prevPersons, currentPersons, coachingErfuellt, missionErfuellt){
+  teamPoints(prevPersons, currentPersons, coachingErfuellt, missionErfuellt, mode='standard'){
     // Map nach Name (Alias)
     const prevMap = new Map((prevPersons||[]).map(p=>[(p.pid||p.name), p]));
     let flagA = false; // WPM-Verbesserung bei mindestens 1 Person
@@ -23,8 +23,8 @@ export const calc = {
     }
     const pointsA = flagA ? 2 : 0;
     const pointsB = flagB ? 3 : 0;
-    const pointsC = coachingErfuellt ? 2 : 0;
-    const pointsD = missionErfuellt ? 3 : 0;
+    const pointsC = (mode==='strikt') ? 0 : (coachingErfuellt ? 2 : 0);
+    const pointsD = (mode==='strikt') ? 0 : (missionErfuellt ? 3 : 0);
     const roh = Math.min(10, pointsA + pointsB + pointsC + pointsD);
     return { roh, flagA, flagB, flagC: !!coachingErfuellt, flagD: !!missionErfuellt };
   },

@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Speedlesen – Erfassung</title>
-<link rel="stylesheet" href="./styles/base.css">
+<link rel="stylesheet" href="./styles/base.css?v=10.1">
 <body class="theme-warm">
 <header class="container">
   <h1>Speedlesen – Erfassung</h1>
@@ -46,12 +46,14 @@
     <p class="hint">WCPM (3-Min) = (WPM − Fehler) / 3 · Punkte: 10/8/6/4/2/0</p>
     <pre id="preview"></pre>
   </section>
+
+<footer class="container"><small class="hint">Version v10.1</small></footer>
 </main>
 
 <script type="module">
-  import { Store } from "./scripts/store.js";
-  import { calc } from "./scripts/calculations.js";
-  import { ui, q } from "./scripts/ui-utils.js";
+  import { Store } from "./scripts/store.js?v=10.1";
+  import { calc } from "./scripts/calculations.js?v=10.1";
+  import { ui, q } from "./scripts/ui-utils.js?v=10.1";
 
   const store = new Store();
   const params = new URLSearchParams(location.search);

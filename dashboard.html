@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Speedlesen – Dashboard</title>
-<link rel="stylesheet" href="./styles/base.css">
+<link rel="stylesheet" href="./styles/base.css?v=10.1">
 <body class="theme-warm">
 <header class="container">
   <h1>Speedlesen – Dashboard</h1>
@@ -40,13 +40,15 @@
     <select id="gruppe-wahl"></select>
     <div id="wochentabelle"></div>
   </section>
+
+<footer class="container"><small class="hint">Version v10.1</small></footer>
 </main>
 
 <script type="module">
-  import { Store } from "./scripts/store.js";
-  import { calc } from "./scripts/calculations.js";
-  import { toCSV } from "./scripts/export.js";
-  import { ui, q } from "./scripts/ui-utils.js";
+  import { Store } from "./scripts/store.js?v=10.1";
+  import { calc } from "./scripts/calculations.js?v=10.1";
+  import { toCSV } from "./scripts/export.js?v=10.1";
+  import { ui, q } from "./scripts/ui-utils.js?v=10.1";
 
   const store = new Store();
   await store.ready;

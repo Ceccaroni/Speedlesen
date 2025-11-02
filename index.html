@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Speedlesen – Start</title>
-<link rel="stylesheet" href="./styles/base.css">
+<link rel="stylesheet" href="./styles/base.css?v=10.1">
 <body class="theme-warm">
 <header class="container">
   <h1>Speedlesen – Start</h1>
@@ -59,11 +59,13 @@
     <h2>Bestehende Gruppen</h2>
     <ul id="gruppenliste" class="list"></ul>
   </section>
+
+<footer class="container"><small class="hint">Version v10.1</small></footer>
 </main>
 
 <script type="module">
-  import { Store } from "./scripts/store.js";
-  import { ui, q } from "./scripts/ui-utils.js";
+  import { Store } from "./scripts/store.js?v=10.1";
+  import { ui, q } from "./scripts/ui-utils.js?v=10.1";
 
   const store = new Store();
   await store.ready;

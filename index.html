@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Speedlesen – Start</title>
-<link rel="stylesheet" href="./styles/base.css?v=10.1">
+<link rel="stylesheet" href="./styles/base.css?v=10.3">
 <body class="theme-warm">
 <header class="container">
   <h1>Speedlesen – Start</h1>
@@ -43,14 +43,14 @@
 
   <section>
     <h2>Einstellungen</h2>
-    <div class="grid">
+    <div class="grid" data-settings-expl="1">
       <div class="card">
         <label for="mode">Punktesystem</label>
         <select id="mode">
           <option value="standard">Standard (A+B+C+D)</option>
           <option value="strikt">Strikt (nur A+B)</option>
         </select>
-        <p class="hint">Gilt für diese Browser-Instanz. Wird lokal gespeichert.</p>
+        <p class="hint">Wähle hier das Punktesystem für diesen Browser: <strong>Standard</strong> (A+B+C+D) oder <strong>Strikt</strong> (nur A+B). Die Einstellung steuert die Punkteberechnung auf der Seite „Erfassung“ und im „Dashboard“.</p>
       </div>
     </div>
   </section>
@@ -60,14 +60,13 @@
     <ul id="gruppenliste" class="list"></ul>
   </section>
 
-<footer class="container"><small class="hint">Version v10.1</small></footer>
 
-<footer class="container"><small class="hint">Version v10.2</small></footer>
+<footer class="container"><small class="hint">Version v10.3</small></footer>
 </main>
 
 <script type="module">
-  import { Store } from "./scripts/store.js?v=10.1";
-  import { ui, q } from "./scripts/ui-utils.js?v=10.1";
+  import { Store } from "./scripts/store.js?v=10.3";
+  import { ui, q } from "./scripts/ui-utils.js?v=10.3";
 
   const store = new Store();
   await store.ready;

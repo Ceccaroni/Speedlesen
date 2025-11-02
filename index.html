@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Speedlesen – Start</title>
-<link rel="stylesheet" href="./styles/base.css?v=10.3">
+<link rel="stylesheet" href="./styles/base.css?v=10.4">
 <body class="theme-warm">
 <header class="container">
   <h1>Speedlesen – Start</h1>
@@ -43,6 +43,7 @@
 
   <section>
     <h2>Einstellungen</h2>
+    <div class="card" id="erklaerung-abcd"><strong>Definitionen A–D:</strong> A = mind. 1 Person hat höhere <em>WPM</em> als in der Vorwoche (+2). B = mind. 1 Person hat weniger <em>Fehler</em> als in der Vorwoche (+3). C = Coaching-Qualität erfüllt (+2). D = Wochenmission erfüllt (+3). Woche 1 = 0. Max. 10 Punkte/Woche. Danach Fair‑Play × (2 / n).</div>
     <div class="grid" data-settings-expl="1">
       <div class="card">
         <label for="mode">Punktesystem</label>
@@ -61,12 +62,13 @@
   </section>
 
 
-<footer class="container"><small class="hint">Version v10.3</small></footer>
+
+<footer class="container"><small class="hint">Version v10.4</small></footer>
 </main>
 
 <script type="module">
-  import { Store } from "./scripts/store.js?v=10.3";
-  import { ui, q } from "./scripts/ui-utils.js?v=10.3";
+  import { Store } from "./scripts/store.js?v=10.4";
+  import { ui, q } from "./scripts/ui-utils.js?v=10.4";
 
   const store = new Store();
   await store.ready;

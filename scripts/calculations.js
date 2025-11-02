@@ -12,11 +12,11 @@ export const calc = {
   // prevPersons/currentPersons: Arrays mit {name,wpm,fehler,wcpm,...}
   teamPoints(prevPersons, currentPersons, coachingErfuellt, missionErfuellt){
     // Map nach Name (Alias)
-    const prevMap = new Map((prevPersons||[]).map(p=>[p.name, p]));
+    const prevMap = new Map((prevPersons||[]).map(p=>[(p.pid||p.name), p]));
     let flagA = false; // WPM-Verbesserung bei mindestens 1 Person
     let flagB = false; // Fehlerreduktion bei mindestens 1 Person
     for (const c of (currentPersons||[])){
-      const p = prevMap.get(c.name);
+      const p = prevMap.get(c.pid || c.name);
       if (!p) continue;
       if ((c.wpm||0) > (p.wpm||0)) flagA = true;
       if ((c.fehler||0) < (p.fehler||0)) flagB = true;

@@ -19,7 +19,8 @@
   <section>
     <h2>Gruppen anlegen</h2>
     <p class="hint">Erfasse 1–3 Personen (Namen oder Kürzel, ASCII). Ergebnisse werden später pro Person eingegeben.</p>
-    <form id="form-gruppe" autocomplete="off">
+    <form id="form-gruppe" autocomplete="off" class="grid-2">
+      <div class="col-left">
       <label for="gruppe-name">Gruppenname</label>
       <input id="gruppe-name" name="gruppe-name" required maxlength="20" pattern="[A-Za-z0-9_-]{1,20}" placeholder="z. B. A1">
 
@@ -30,9 +31,13 @@
         <option value="3">3</option>
       </select>
 
+      </div>
+      <div class="col-right">
       <div id="personen-container"></div>
+      </div>
 
-      <button type="submit" class="btn-primary">Gruppe speichern</button>
+      </form>
+  <div class="form-actions"><button id="btn-save-group" class="btn-primary">Gruppe speichern</button></div>
     </form>
   </section>
 
@@ -50,6 +55,7 @@
   await store.ready;
 
   const form = q('#form-gruppe');
+  const btnSave = q('#btn-save-group');
   const anzahl = q('#anzahl-personen');
   const personenContainer = q('#personen-container');
   const liste = q('#gruppenliste');
@@ -72,9 +78,12 @@
   anzahl.addEventListener('change', renderPersonenfelder);
   renderPersonenfelder();
 
-  form.addEventListener('submit', async (e) => {
+  // (Enter) Tastendrücker abfangen
+  form.addEventListener('submit', async (e) => { e.preventDefault(); btnSave?.click(); });
+
+  btnSave.addEventListener('click', async (e) => {
     e.preventDefault();
-    const name = q('#gruppe-name').value.trim();
+    const name = q('#gruppe-name').value.trim(); if(!name){return;}
     const n = parseInt(anzahl.value, 10);
     const mitglieder = [];
     for (let i = 1; i <= n; i++) {
@@ -83,7 +92,8 @@
         alert("Pseudonyme: 1–20 Zeichen, ASCII [A–Z a–z 0–9 _ -]");
         return;
       }
-      mitglieder.push({ id: `${name}_${i}`, gruppe_id: name, alias: v });
+      const pid = `${name}_${i}_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+      mitglieder.push({ id: `${name}_${i}`, pid, gruppe_id: name, alias: v });
     }
     await store.addGroup({ id: name, name });
     for (const m of mitglieder) await store.addMember(m);
@@ -99,7 +109,7 @@
     liste.innerHTML = "";
     for (const g of gruppen) {
       const li = document.createElement('li');
-      li.textContent = `${g.id} — ${g.name}`;
+      li.innerHTML = `${g.id} — ${g.name} · <a href='./erfassung.html?gruppe=${g.id}'>Erfassung</a> · <a href='./dashboard.html?gruppe=${g.id}'>Dashboard</a>`;
       liste.appendChild(li);
     }
   }

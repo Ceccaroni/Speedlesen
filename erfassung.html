@@ -53,6 +53,8 @@
   import { ui, q } from "./scripts/ui-utils.js";
 
   const store = new Store();
+  const params = new URLSearchParams(location.search);
+  const presetGroup = params.get('gruppe');
   await store.ready;
 
   const sel = q('#gruppe-select');
@@ -71,6 +73,7 @@ const mission = q('#mission');
       opt.textContent = g.id;
       sel.appendChild(opt);
     }
+    if (presetGroup) sel.value = presetGroup;
     await renderInputs();
   }
 
@@ -125,7 +128,7 @@ const mission = q('#mission');
       const wpm = calc.wpm(w3);
       const wps = calc.wps(w3);
       const wcpm3 = calc.wcpm3(wpm, fe);
-      personen.push({ name: m.alias, woerter3: w3, wpm, wps, fehler: fe, wcpm: wcpm3 });
+      personen.push({ pid: m.pid || m.id, name: m.alias, woerter3: w3, wpm, wps, fehler: fe, wcpm: wcpm3 });
     });
 
     // Get previous week for A/B checks (baseline: Woche 1 -> 0 Punkte)

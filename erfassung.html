@@ -16,6 +16,7 @@
 <noscript><div class="container"><p style="border:1px solid #000;padding:8px"><strong>Hinweis:</strong> JavaScript ist deaktiviert. Diese Seite benötigt es für Erfassung und Auswertung.</p></div></noscript>
 
 <main class="container">
+  <p id="mode-info" class="hint"></p>
   <section>
     <p class="hint">Pro Person werden WPM und Fehler erfasst; die App berechnet WCPM (3-Min) und Punkte je Person sowie Gruppen-Punkte (roh/normalisiert).</p>
     <label for="gruppe-select">Gruppe</label>
@@ -55,6 +56,10 @@
   const store = new Store();
   const params = new URLSearchParams(location.search);
   const presetGroup = params.get('gruppe');
+  const MODE_KEY='speedlesen_mode';
+  let calcMode = localStorage.getItem(MODE_KEY)||'standard';
+  const modeInfo = q('#mode-info');
+  modeInfo.textContent = `Punktesystem: ${calcMode==='strikt' ? 'Strikt (nur A+B)' : 'Standard (A+B+C+D)'}`;
   await store.ready;
 
   const sel = q('#gruppe-select');
@@ -137,7 +142,7 @@ const mission = q('#mission');
 
     let punkte_roh = 0, flagA=false, flagB=false, flagC=false, flagD=false;
     if (w > 1 && prev){
-      const res = calc.teamPoints(prev.personen, personen, coaching.checked, mission.checked);
+      const res = calc.teamPoints(prev.personen, personen, coaching.checked, mission.checked, calcMode);
       punkte_roh = res.roh; flagA = res.flagA; flagB = res.flagB; flagC = res.flagC; flagD = res.flagD;
     } else {
       // Woche 1 = 0, Flags nur aus Coaching/Mission nicht zählend

@@ -42,6 +42,20 @@
   </section>
 
   <section>
+    <h2>Einstellungen</h2>
+    <div class="grid">
+      <div class="card">
+        <label for="mode">Punktesystem</label>
+        <select id="mode">
+          <option value="standard">Standard (A+B+C+D)</option>
+          <option value="strikt">Strikt (nur A+B)</option>
+        </select>
+        <p class="hint">Gilt für diese Browser-Instanz. Wird lokal gespeichert.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
     <h2>Bestehende Gruppen</h2>
     <ul id="gruppenliste" class="list"></ul>
   </section>
@@ -103,6 +117,14 @@
     renderPersonenfelder();
     await renderListe();
   });
+
+  const MODE_KEY='speedlesen_mode';
+  const modeSel = document.querySelector('#mode');
+  if(modeSel){
+    const saved = localStorage.getItem(MODE_KEY)||'standard';
+    modeSel.value = saved;
+    modeSel.addEventListener('change', ()=> localStorage.setItem(MODE_KEY, modeSel.value));
+  }
 
   async function renderListe() {
     const gruppen = await store.getGroups();

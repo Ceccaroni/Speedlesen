@@ -74,3 +74,50 @@ export const calc = {
     return arr.length%2 ? arr[mid] : (arr[mid-1]+arr[mid])/2;
   }
 };
+// --- Level-Basis (ohne Änderung am Punktesystem) ---------------------------
+// basis: 'kumulativ' | '3w' | 'egd'
+function levelScoreFromWeeks(weeks, basis = 'kumulativ') {
+  // Wochen nach Nummer sortieren
+  const ws = [...(weeks||[])].sort((a,b)=>a.woche-b.woche);
+  const vals = ws.map(w => Number(w.punkte_gruppe_normalisiert || 0)); // 0..10
+
+  let score = 0;
+
+  if (basis === '3w') {
+    // Summe der letzten 3 Wochen → Skala 0..30
+    const last3 = vals.slice(-3);
+    score = last3.reduce((a,b)=>a+b, 0);
+  } else if (basis === 'egd') {
+    // Exponentiell gleitend (weicher Abstieg); Skala 0..10 -> hochskalieren auf 0..30
+    const alpha = 0.4;
+    let s = 0;
+    for (const p of vals) s = alpha * p + (1 - alpha) * s;
+    score = s * 3; // vergleichbar zu 0..30
+  } else {
+    // kumulativ (heute): Summe aller normierten Wochenpunkte → theoretisch >30 möglich
+    score = vals.reduce((a,b)=>a+b, 0);
+  }
+
+  // Level aus Score nach 0–9 / 10–19 / 20–29 / ≥30
+  let level = "Starter";
+  if (score >= 30) level = "Flow-Master";
+  else if (score >= 20) level = "Speedster";
+  else if (score >= 10) level = "Reader";
+
+  // Bound + nächster Schwellenwert für Fortschritt
+  const lowerBound = (level==="Reader") ? 10 : (level==="Speedster") ? 20 : (level==="Flow-Master") ? 30 : 0;
+  const nextThreshold = (level==="Flow-Master") ? null
+                    : (level==="Speedster") ? 30
+                    : (level==="Reader")   ? 20
+                    : 10;
+
+  // Fortschritt in % innerhalb der aktuellen 10er-Stufe
+  const progress = (nextThreshold === null) ? 100
+                  : Math.max(0, Math.min(100, ((score - lowerBound) / 10) * 100));
+
+  return { score, level, lowerBound, nextThreshold, progress };
+}
+
+export const levelBasis = {
+  fromWeeks: levelScoreFromWeeks
+};

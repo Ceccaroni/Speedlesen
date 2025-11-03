@@ -298,5 +298,13 @@
     });
   })();
 </script>
+
+<!-- Schema-Wächter: direkt vor </body> -->
+<script type="module">
+  import { watchSchema } from "./scripts/schema-watch.js?v=10.7.1";
+  // Erwartet das bewährte Legacy-Schema. Wenn du später migrierst, passt du die Liste an.
+  watchSchema({ dbName: "speedlesen_db_v1", version: 1, expect: ["gruppen","mitglieder","messungen"] });
+</script>
+
 </body>
 </html>

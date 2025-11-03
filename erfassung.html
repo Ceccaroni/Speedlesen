@@ -9,7 +9,7 @@
   <h1>Speedlesen – Erfassung</h1>
   <nav>
     <button id="theme-toggle" class="btn-ghost" aria-pressed="false" title="Farbschema umschalten">Darstellung</button> 
-    <a href="./index.html">Start</a>
+   <a href="./index.html">Start</a>
     <a href="./dashboard.html">Dashboard</a>
   </nav>
 </header>
@@ -47,11 +47,6 @@
     <pre id="preview"></pre>
   </section>
 
-
-
-
-
-
 <footer class="container"><small class="hint">Version v10.7</small></footer>
 </main>
 
@@ -70,11 +65,11 @@
   await store.ready;
 
   const sel = q('#gruppe-select');
-const woche = q('#woche');
-const inputs = q('#inputs');
-const preview = q('#preview');
-const coaching = q('#coaching');
-const mission = q('#mission');
+  const woche = q('#woche');
+  const inputs = q('#inputs');
+  const preview = q('#preview');
+  const coaching = q('#coaching');
+  const mission = q('#mission');
 
   async function loadGroups() {
     sel.innerHTML = "";
@@ -195,5 +190,13 @@ const mission = q('#mission');
     });
   })();
 </script>
+
+<!-- Schema-Wächter: direkt vor </body> -->
+<script type="module">
+  import { watchSchema } from "./scripts/schema-watch.js?v=10.7.1";
+  // Erwartet das bewährte Legacy-Schema. Wenn du später migrierst, passt du die Liste an.
+  watchSchema({ dbName: "speedlesen_db_v1", version: 1, expect: ["gruppen","mitglieder","messungen"] });
+</script>
+
 </body>
 </html>

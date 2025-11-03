@@ -18,8 +18,20 @@
 <main class="container">
   <section>
     <h2>Ranking (normalisiert)</h2>
-    <button id="btn-export" class="btn-primary">CSV exportieren</button>
-    <button id="btn-reset" class="btn-danger">Daten zurücksetzen</button>
+
+    <!-- Level-Basis Auswahl (nur Anzeige/Level; Punkte bleiben unverändert) -->
+    <div class="settings">
+      <label for="basis" style="margin:0">Level-Basis:</label>
+      <select id="basis">
+        <option value="3w" selected>Letzte 3 Wochen</option>
+        <option value="kumulativ">Kumulativ (alle Wochen)</option>
+        <option value="egd">Gleitend (EGD)</option>
+      </select>
+
+      <button id="btn-export" class="btn-primary">CSV exportieren</button>
+      <button id="btn-reset" class="btn-danger">Daten zurücksetzen</button>
+    </div>
+
     <table id="ranking">
       <thead><tr><th>Gruppe</th><th>Level</th><th>Kumulierte Punkte</th><th>Letzte Woche</th></tr></thead>
       <tbody></tbody>
@@ -204,11 +216,11 @@
           gruppe: g.id,
           anzahl: w.anzahl_personen,
           name: p.name,
-          woerter3: p.woerter3,
-          wpm: p.wpm,
-          wps: p.wps,
-          fehler: p.fehler,
-          wcpm: p.wcpm, // "WCPM (3-Min)"
+          woerter3: w.personen?.[0]?.woerter3, /* unverändert aus deiner Vorlage – Summe-Zeile */
+          wpm: w.personen?.[0]?.wpm,
+          wps: w.personen?.[0]?.wps,
+          fehler: w.personen?.[0]?.fehler,
+          wcpm: w.personen?.[0]?.wcpm,
           flagA: w.flags?.A_WPM_verbessert || false,
           flagB: w.flags?.B_Fehler_reduziert || false,
           flagC: w.flags?.Coaching || false,

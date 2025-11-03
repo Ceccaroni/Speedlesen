@@ -59,11 +59,27 @@
 <script type="module">
   import { Store } from "./scripts/store.js?v=10.7";
   import { calc } from "./scripts/calculations.js?v=10.7";
+  import { levelBasis } from "./scripts/calculations.js?v=10.7"; /* 2.2 Import ergänzt */
   import { toCSV } from "./scripts/export.js?v=10.7";
   import { ui, q } from "./scripts/ui-utils.js?v=10.7";
 
   const store = new Store();
   await store.ready;
+
+  /* 2.3 Persistenz/Umschaltung der Level-Basis */
+  const BASIS_KEY = "speedlesen_level_basis";
+  const basisSel = document.querySelector('#basis');
+  if (basisSel) {
+    const saved = localStorage.getItem(BASIS_KEY) || '3w';
+    basisSel.value = saved;
+    basisSel.addEventListener('change', () => {
+      localStorage.setItem(BASIS_KEY, basisSel.value);
+      renderRanking(); // nur Anzeige neu berechnen
+    });
+  }
+  function currentBasis(){
+    return (basisSel && basisSel.value) ? basisSel.value : (localStorage.getItem(BASIS_KEY) || '3w');
+  }
 
   // Hilfen nur für Anzeige des Fortschritts (keine Änderung am Punktesystem)
   function nextThreshold(sum){
@@ -84,35 +100,36 @@
     tbody.innerHTML = "";
     const gruppen = await store.getGroups();
     const rows = [];
+    const basis = currentBasis(); /* 2.4 Basis verwenden */
+
     for (const g of gruppen) {
       const weeks = await store.getGroupWeeks(g.id);
-      const sum = weeks.reduce((a, b) => a + (b.punkte_gruppe_normalisiert || 0), 0);
-      const last = weeks.sort((a,b)=>b.woche-a.woche)[0];
-      const level = calc.levelForCumulative(sum);
 
-      // Fortschritt zum nächsten Level (rein Anzeige)
-      const lb = lowerBound(level);
-      const nt = nextThreshold(sum);
-      const progress = (nt === null) ? 100 : Math.max(0, Math.min(100, ((sum - lb) / 10) * 100));
-      
+      /* 2.4 Score/Level/Progress aus levelBasis */
+      const L = levelBasis.fromWeeks(weeks, basis);
+
+      const last = [...weeks].sort((a,b)=>b.woche-a.woche)[0];
       const recentLevelWeek = calc.lastLevelUpWeek(weeks);
       const medianW = calc.medianWcpmLastWeek(weeks);
+
       rows.push({
         gruppe: g.id,
-        level,
-        sum,
-        lastWeek: last ? last.punkte_gruppe_normalisiert : 0,
-        progress,
-        progressNext: nt,
+        level: L.level,
+        sum: L.score, /* Anzeige entspricht gewählter Basis */
+        lastWeek: last ? (last.punkte_gruppe_normalisiert || 0) : 0,
+        progress: L.progress,
+        progressNext: L.nextThreshold,
         tie: { recentLevelWeek, medianWCPM: medianW }
       });
     }
+
     rows.sort((a,b)=> 
       b.sum - a.sum ||
       b.tie.recentLevelWeek - a.tie.recentLevelWeek ||
       b.tie.medianWCPM - a.tie.medianWCPM ||
       (a.gruppe > b.gruppe ? 1 : -1)
     );
+
     for (const r of rows) {
       const tr = document.createElement('tr');
       const cls = r.level==="Flow-Master" ? "badge-flow" : r.level==="Speedster" ? "badge-speedster" : r.level==="Reader" ? "badge-reader" : "badge-starter";

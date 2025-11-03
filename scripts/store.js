@@ -19,7 +19,7 @@ export class Store {
       req.onupgradeneeded = (e) => {
         const db = e.target.result;
 
-        // groups: key = id (Gruppenname), value = { id, personen: [{pid?, name}], createdAt }
+        // groups: key = id (Gruppenname), value = { id, personen: [{pid?, name, alias?}], createdAt }
         if (!db.objectStoreNames.contains("groups")) {
           const st = db.createObjectStore("groups", { keyPath: "id" });
           st.createIndex("by_id", "id", { unique: true });
@@ -102,7 +102,7 @@ export class Store {
 
   /**
    * Gruppe anlegen/aktualisieren.
-   * @param {{id:string, personen?:Array<{pid?:string,name:string}>}} group
+   * @param {{id:string, personen?:Array<{pid?:string,name:string,alias?:string}>}} group
    */
   async upsertGroup(group) {
     await this.ready;
@@ -111,7 +111,8 @@ export class Store {
       id: String(group.id),
       personen: Array.isArray(group.personen) ? group.personen.map(p=>({
         pid: p.pid || p.name,
-        name: p.name
+        name: p.name,
+        alias: p.alias || p.name   // <— Ergänzt
       })) : [],
       createdAt: group.createdAt || now,
       updatedAt: now,
@@ -128,7 +129,7 @@ export class Store {
   // ---------------- Members (als Teil der Gruppe) ----------------
   /**
    * Legacy-API: fügt ein Mitglied in group.personen ein.
-   * @param {{id?:string, pid?:string, name:string, gruppe_id:string}} m
+   * @param {{id?:string, pid?:string, name:string, alias?:string, gruppe_id:string}} m
    */
   async addMember(m){
     await this.ready;
@@ -146,7 +147,7 @@ export class Store {
 
     const exists = (group.personen || []).some(p => (p.pid||p.name) === pid);
     if (!exists){
-      group.personen = [...(group.personen||[]), { pid, name: m.name }];
+      group.personen = [...(group.personen||[]), { pid, name: m.name, alias: m.alias || m.name }]; // <— Ergänzt
       group.updatedAt = Date.now();
       st.put(group);
     }
@@ -167,7 +168,9 @@ export class Store {
       get.onerror = () => rej(get.error);
     });
     await done();
-    return group ? (group.personen || []) : [];
+    return group
+      ? (group.personen || []).map(p => ({ ...p, alias: p.alias || p.name })) // <— Ergänzt
+      : [];
   }
 
   // ---------------- Weeks ----------------
@@ -202,6 +205,7 @@ export class Store {
     const persons = (week.personen || []).map(p => ({
       pid: p.pid || p.name,
       name: p.name,
+      alias: p.alias || p.name,  // <— Ergänzt
       woerter3: Number(p.woerter3 ?? 0),
       wpm: Number(p.wpm ?? 0),
       wps: Number(p.wps ?? 0),
@@ -242,9 +246,11 @@ export class Store {
     });
 
     if (group) {
-      const known = new Map((group.personen || []).map(p => [p.pid || p.name, { pid: p.pid || p.name, name: p.name }]));
+      const known = new Map((group.personen || []).map(p =>
+        [p.pid || p.name, { pid: p.pid || p.name, name: p.name, alias: p.alias || p.name }] // <— Ergänzt
+      ));
       for (const p of persons) {
-        if (!known.has(p.pid)) known.set(p.pid, { pid: p.pid, name: p.name });
+        if (!known.has(p.pid)) known.set(p.pid, { pid: p.pid, name: p.name, alias: p.alias || p.name }); // <— Ergänzt
       }
       group.personen = Array.from(known.values());
       group.updatedAt = Date.now();
@@ -252,7 +258,7 @@ export class Store {
     } else {
       gStore.put({
         id: row.gruppe,
-        personen: persons.map(p => ({ pid: p.pid, name: p.name })),
+        personen: persons.map(p => ({ pid: p.pid, name: p.name, alias: p.alias || p.name })), // <— Ergänzt
         createdAt: Date.now(),
         updatedAt: Date.now()
       });
@@ -265,7 +271,7 @@ export class Store {
   // --- Legacy-Kompatibilität: saveMeasurement(m) -> writeWeek(...)
   /**
    * Erwartet altes Messungsformat:
-   * { id?, gruppe_id, gruppe?, woche, personen:[{name,pid?,woerter3,wpm,wps,fehler,wcpm,punkte_person}], flags?, punkte_gruppe_roh?, punkte_gruppe_normalisiert?, punkte_gruppe_kumuliert? }
+   * { id?, gruppe_id, gruppe?, woche, personen:[{name,pid?,woerter3,wpm,wps,fehler,wcpm,punkte_person,alias?}], flags?, punkte_gruppe_roh?, punkte_gruppe_normalisiert?, punkte_gruppe_kumuliert? }
    */
   async saveMeasurement(m){
     const gruppe = m.gruppe_id || m.gruppe;

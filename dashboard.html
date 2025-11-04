@@ -23,9 +23,9 @@
     <div class="settings">
       <label for="basis" style="margin:0">Level-Basis:</label>
       <select id="basis">
-        <option value="3w" selected>Letzte 3 Wochen</option>
+        <option value="5w" selected>Rangliste</option>
         <option value="kumulativ">Kumulativ (alle Wochen)</option>
-        <option value="egd">Gleitend (EGD)</option>
+        <option value="trend">Trend</option>
       </select>
 
       <!-- JSON-Export statt CSV -->
@@ -70,19 +70,27 @@
   const store = new Store();
   await store.ready;
 
-  /* 2.3 Persistenz/Umschaltung der Level-Basis */
+  /* 2.3 Persistenz/Umschaltung der Level-Basis (umgestellt auf 5w/Rangliste & Trend) */
   const BASIS_KEY = "speedlesen_level_basis";
   const basisSel = document.querySelector('#basis');
+
+  function normalizeBasis(v){
+    if (v === '3w') return '5w';   // Alt zu neu
+    if (v === 'egd') return 'trend';
+    if (v === 'rang') return '5w'; // Synonym
+    return v || '5w';
+  }
+
   if (basisSel) {
-    const saved = localStorage.getItem(BASIS_KEY) || '3w';
+    const saved = normalizeBasis(localStorage.getItem(BASIS_KEY));
     basisSel.value = saved;
     basisSel.addEventListener('change', () => {
       localStorage.setItem(BASIS_KEY, basisSel.value);
-      renderRanking(); // nur Anzeige neu berechnen
+      renderRanking();
     });
   }
   function currentBasis(){
-    return (basisSel && basisSel.value) ? basisSel.value : (localStorage.getItem(BASIS_KEY) || '3w');
+    return normalizeBasis(basisSel?.value || localStorage.getItem(BASIS_KEY) || '5w');
   }
 
   // Hilfen nur für Anzeige des Fortschritts (keine Änderung am Punktesystem)

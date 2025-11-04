@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Speedlesen – Dashboard</title>
-<link rel="stylesheet" href="./styles/base.css?v=10.7.2">
+<link rel="stylesheet" href="./styles/base.css?v=10.7.3">
 <body class="theme-warm">
 <header class="container">
   <h1>Speedlesen – Dashboard</h1>
@@ -321,7 +321,7 @@ document.querySelector('#btn-export-json').addEventListener('click', exportJSON)
 
 <!-- Schema-Wächter: direkt vor </body> -->
 <script type="module">
-  import { watchSchema } from "./scripts/schema-watch.js?v=10.7.1";
+  import { watchSchema } from "./scripts/schema-watch.js?v=10.7.3";
   watchSchema({ dbName: "speedlesen_db_v1", version: 1, expect: ["gruppen","mitglieder","messungen"] });
 </script>
 

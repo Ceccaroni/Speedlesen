@@ -210,27 +210,50 @@
     });
   }
 
-  /* JSON-Export */
-  async function exportJSON(){
-    try{
-      const payload = await store.exportJSON();
-      const pretty = JSON.stringify(payload, null, 2);
-      const blob = new Blob([pretty], {type:"application/json;charset=utf-8"});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      const ts = new Date().toISOString().replace(/[:.]/g,'-');
-      a.href = url;
-      a.download = `speedlesen_export_${ts}.json`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    }catch(err){
-      console.error(err);
-      alert('Export fehlgeschlagen: ' + (err?.message || err));
+/* JSON-Export – mit Fallback, falls store.exportJSON nicht existiert */
+async function exportJSON(){
+  try{
+    let payload;
+
+    if (typeof store.exportJSON === 'function') {
+      // Neuer Store: komfortabler Komplett-Export
+      payload = await store.exportJSON();
+    } else {
+      // Fallback für alten/legacy Store
+      const groups = await store.getGroups();
+      const weeks = [];
+      for (const g of groups){
+        const ws = await store.getGroupWeeks(g.id);
+        weeks.push(...(ws || []));
+      }
+      // Settings kennen alte Stores meist nicht – leer lassen
+      payload = {
+        version: 'legacy-fallback',
+        groups,
+        weeks,
+        settings: [],
+        exportedAt: new Date().toISOString()
+      };
     }
+
+    const pretty = JSON.stringify(payload, null, 2);
+    const blob = new Blob([pretty], {type:"application/json;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const ts = new Date().toISOString().replace(/[:.]/g,'-');
+    a.href = url;
+    a.download = `speedlesen_export_${ts}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }catch(err){
+    console.error(err);
+    alert('Export fehlgeschlagen: ' + (err?.message || err));
   }
-  document.querySelector('#btn-export-json').addEventListener('click', exportJSON);
+}
+document.querySelector('#btn-export-json').addEventListener('click', exportJSON);
+
 
   function resetData(){
     if (!confirm("Alle lokalen Daten löschen? (Gruppen, Mitglieder, Messungen)")) return;

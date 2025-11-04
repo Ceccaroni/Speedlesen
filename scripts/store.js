@@ -144,28 +144,124 @@ export class Store{
     await txDone(tx);
     return (res||[]).sort((a,b)=>a.woche-b.woche);
   }
+
+  // ---------------- Import (neu) ----------------
+  /**
+   * Unterstützt zwei Formate:
+   * – Neues Format: { groups:[{id,personen:[{pid,name,alias}]}], weeks:[{gruppe,woche,...}], settings:[] }
+   * – Legacy-Format: { gruppen:[], mitglieder:[], messungen:[] }
+   */
+  async importJSON(payload, { overwrite = false } = {}){
+    await this.ready;
+    if (!payload || typeof payload !== 'object'){
+      throw new Error('importJSON: ungültige Daten.');
+    }
+
+    const hasNew = Array.isArray(payload.groups) || Array.isArray(payload.weeks);
+    const hasLegacy = Array.isArray(payload.gruppen) || Array.isArray(payload.mitglieder) || Array.isArray(payload.messungen);
+    if (!hasNew && !hasLegacy) throw new Error('importJSON: unerwartetes Format.');
+
+    // Fallback: in-Memory zusammenführen
+    if (this.fallback){
+      const s = this.memory;
+      if (overwrite){ s.gruppen=[]; s.mitglieder=[]; s.messungen=[]; }
+      if (hasLegacy){
+        (payload.gruppen||[]).forEach(g=>{
+          if (!s.gruppen.find(x=>x.id===g.id)) s.gruppen.push({id:String(g.id)});
+        });
+        (payload.mitglieder||[]).forEach(m=>{
+          const id = `${m.gruppe_id}::${m.pid||m.id||m.name}`;
+          if (!s.mitglieder.find(x=>x.id===id)){
+            s.mitglieder.push({ id, pid:m.pid||m.id||m.name, name:m.name, alias:m.alias||m.name, gruppe_id:String(m.gruppe_id) });
+          }
+        });
+        (payload.messungen||[]).forEach(w=>{
+          const i = s.messungen.findIndex(x=>x.id===w.id);
+          if (i>=0) s.messungen[i]=w; else s.messungen.push(w);
+        });
+      } else {
+        (payload.groups||[]).forEach(g=>{
+          if (!s.gruppen.find(x=>x.id===g.id)) s.gruppen.push({id:String(g.id)});
+          (g.personen||[]).forEach(p=>{
+            const pid = p.pid || p.id || p.name;
+            const id = `${g.id}::${pid}`;
+            if (!s.mitglieder.find(x=>x.id===id)){
+              s.mitglieder.push({ id, pid, name:p.name, alias:p.alias||p.name, gruppe_id:String(g.id) });
+            }
+          });
+        });
+        (payload.weeks||[]).forEach(w=>{
+          const row = {
+            id: `${w.gruppe}_W${w.woche}`,
+            gruppe_id: String(w.gruppe),
+            woche: Number(w.woche),
+            anzahl_personen: Number(w.anzahl_personen || (w.personen?.length||0)),
+            personen: (w.personen||[]).map(p=>({ pid:p.pid||p.name, name:p.name, alias:p.alias||p.name, woerter3:p.woerter3, wpm:p.wpm, wps:p.wps, fehler:p.fehler, wcpm:p.wcpm, punkte_person:p.punkte_person })),
+            flags: w.flags || {},
+            punkte_gruppe_roh: w.punkte_gruppe_roh,
+            punkte_gruppe_normalisiert: w.punkte_gruppe_normalisiert,
+            punkte_gruppe_kumuliert: w.punkte_gruppe_kumuliert,
+            timestamp: w.savedAt || Date.now()
+          };
+          const i = s.messungen.findIndex(x=>x.id===row.id);
+          if (i>=0) s.messungen[i]=row; else s.messungen.push(row);
+        });
+      }
+      localStorage.setItem(DB_NAME, JSON.stringify(s));
+      return;
+    }
+
+    // IndexedDB: schreiben
+    const tx = this.db.transaction(['gruppen','mitglieder','messungen'], 'readwrite');
+    const stG = tx.objectStore('gruppen');
+    const stM = tx.objectStore('mitglieder');
+    const stW = tx.objectStore('messungen');
+
+    if (overwrite){
+      await reqp(stG.clear());
+      await reqp(stM.clear());
+      await reqp(stW.clear());
+    }
+
+    if (hasLegacy){
+      for (const g of (payload.gruppen||[])){
+        await reqp(stG.put({ id: String(g.id) }));
+      }
+      for (const m of (payload.mitglieder||[])){
+        const pid = m.pid || m.id || m.name;
+        await reqp(stM.put({ id: `${m.gruppe_id}::${pid}`, pid, name:m.name, alias:m.alias||m.name, gruppe_id:String(m.gruppe_id) }));
+      }
+      for (const w of (payload.messungen||[])){
+        await reqp(stW.put(w));
+      }
+    } else {
+      for (const g of (payload.groups||[])){
+        await reqp(stG.put({ id: String(g.id) }));
+        for (const p of (g.personen||[])){
+          const pid = p.pid || p.id || p.name;
+          await reqp(stM.put({ id: `${g.id}::${pid}`, pid, name:p.name, alias:p.alias||p.name, gruppe_id:String(g.id) }));
+        }
+      }
+      for (const w of (payload.weeks||[])){
+        const row = {
+          id: `${w.gruppe}_W${w.woche}`,
+          gruppe_id: String(w.gruppe),
+          woche: Number(w.woche),
+          anzahl_personen: Number(w.anzahl_personen || (w.personen?.length||0)),
+          personen: (w.personen||[]).map(p=>({ pid:p.pid||p.name, name:p.name, alias:p.alias||p.name, woerter3:p.woerter3, wpm:p.wpm, wps:p.wps, fehler:p.fehler, wcpm:p.wcpm, punkte_person:p.punkte_person })),
+          flags: w.flags || {},
+          punkte_gruppe_roh: w.punkte_gruppe_roh,
+          punkte_gruppe_normalisiert: w.punkte_gruppe_normalisiert,
+          punkte_gruppe_kumuliert: w.punkte_gruppe_kumuliert,
+          timestamp: w.savedAt || Date.now()
+        };
+        await reqp(stW.put(row));
+      }
+    }
+
+    await txDone(tx);
+  }
 }
 
 // ---- DB öffnen / Schema (Legacy) ----
-function openDb(){
-  return new Promise((resolve, reject)=>{
-    const req = indexedDB.open(DB_NAME, DB_VER);
-    req.onupgradeneeded = ()=>{
-      const db = req.result;
-
-      if (!db.objectStoreNames.contains('gruppen')){
-        db.createObjectStore('gruppen', { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains('mitglieder')){
-        const os = db.createObjectStore('mitglieder', { keyPath: 'id' });
-        os.createIndex('by_gruppe','gruppe_id',{unique:false});
-      }
-      if (!db.objectStoreNames.contains('messungen')){
-        const os = db.createObjectStore('messungen', { keyPath: 'id' });
-        os.createIndex('by_gruppe','gruppe_id',{unique:false});
-      }
-    };
-    req.onsuccess = ()=> resolve(req.result);
-    req.onerror = ()=> reject(req.error);
-  });
-}
+function openDb

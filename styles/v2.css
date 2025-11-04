@@ -1,0 +1,120 @@
+/* Speedlesen – Skin v2 (nur CSS-Variablen + Overrides, kein HTML/JS-Refactor) */
+
+/* ---- Tokens Light ---- */
+:root{
+  --primary-500:#0A7DFF; --primary-600:#0666D6; --primary-700:#054FAD;
+  --secondary-500:#13B39A;
+  --gray-50:#FAFAFC; --gray-100:#F2F3F7; --gray-200:#E6E8EF;
+  --gray-300:#D2D6E1; --gray-400:#B6BCCB; --gray-500:#8C94A6;
+  --gray-600:#6B7280; --gray-700:#4B5563; --gray-800:#303644; --gray-900:#1F232B;
+
+  --bg:var(--gray-50); --panel:#fff; --ink:var(--gray-900); --muted:var(--gray-600);
+  --border:var(--gray-300); --border-strong:var(--gray-800);
+  --focus:#FFB703;
+  --radius-1:6px; --radius-2:10px; --radius-3:14px;
+  --shadow-1:0 1px 2px rgba(0,0,0,.06), 0 1px 1px rgba(0,0,0,.04);
+  --shadow-2:0 4px 10px rgba(0,0,0,.08);
+  --dur:180ms; --dur-fast:120ms; --easing:cubic-bezier(.2,.7,.2,1);
+
+  /* Fortschrittsbalken */
+  --progress-h:10px;
+
+  /* Badge-Farben für deine Level */
+  --lvl-starter:#CBD5E1;   /* grau */
+  --lvl-reader:#10B981;    /* grün */
+  --lvl-speed:#F59E0B;     /* orange */
+  --lvl-flow:#3B82F6;      /* blau */
+}
+
+/* ---- Dark-Mode respektiert deinen bestehenden Theme-Toggle (data-theme=dark) ---- */
+:root[data-theme="dark"]{
+  --bg:#0F1217; --panel:#141922; --ink:#EEF2F7; --muted:#A8B3C2;
+  --border:#2B3442; --border-strong:#C6D0E1;
+  --gray-100:#151A22; --gray-200:#1B2230; --gray-300:#2B3442;
+  --primary-500:#4CA3FF; --primary-600:#2C8AF4; --primary-700:#1974D6;
+  --secondary-500:#2DD4BF; --focus:#FFD166;
+}
+
+/* ---- Grundflächen (setzt nur Farben/Abstände, keine Struktur) ---- */
+body.theme-warm{ background:var(--bg); color:var(--ink); }
+.container{ width:min(100% - 2*16px, 1200px); margin-inline:auto; }
+
+/* ---- Karten ---- */
+.card{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:var(--radius-2);
+  box-shadow:var(--shadow-1);
+}
+.card .hint{ color:var(--muted); }
+
+/* ---- Buttons: mappe auf deine existierenden Klassen ---- */
+button, .btn-success, .btn-danger, .btn-ghost{
+  border-radius:var(--radius-2);
+  border:1px solid var(--border);
+  padding:.6rem 1rem;
+  font-weight:600;
+  transition:background var(--dur) var(--easing), border-color var(--dur) var(--easing), transform var(--dur-fast) var(--easing);
+  box-shadow:var(--shadow-1);
+}
+
+/* Primärersatz: benutze auf Bedarf .btn-primary genauso */
+.btn-success, .btn-primary{
+  background:var(--primary-500); color:#fff; border-color:var(--primary-600);
+}
+.btn-success:hover, .btn-primary:hover{ background:var(--primary-600); }
+.btn-success:active, .btn-primary:active{ background:var(--primary-700); }
+
+/* Danger */
+.btn-danger{ background:#EF4444; color:#fff; border-color:#DC2626; }
+.btn-danger:hover{ filter:brightness(.98); }
+
+/* Ghost */
+.btn-ghost{
+  background:transparent; color:var(--ink); border-color:var(--border);
+}
+.btn-ghost:hover{ background:color-mix(in srgb, var(--primary-500) 8%, transparent); }
+
+/* ---- Badges (Level) – nutzt deine CSS-Klassen aus dem Dashboard ---- */
+.badge{ border-radius:999px; border:1px solid var(--border); font-weight:700; padding:0 .6rem; height:26px; display:inline-grid; place-items:center; }
+.badge-starter{ background:var(--lvl-starter); color:#0F172A; border-color:#94A3B8; }
+.badge-reader{  background:var(--lvl-reader);  color:#052E26; border-color:#059669; }
+.badge-speedster{background:var(--lvl-speed);  color:#3D2A03; border-color:#D97706; }
+.badge-flow{    background:var(--lvl-flow);   color:#06122B; border-color:#2563EB; }
+
+/* ---- Tabelle ---- */
+table{ width:100%; border-collapse:collapse; background:var(--panel); }
+th, td{ padding:.7rem .9rem; border-bottom:1px solid var(--border); }
+thead th{ background:var(--gray-100); text-align:left; }
+tbody tr:nth-child(even){ background:color-mix(in srgb, var(--gray-100) 60%, transparent); }
+
+/* ---- Fortschrittsbalken in der Level-Spalte ---- */
+.level-cell .level-progress .track{
+  height:var(--progress-h);
+  background:var(--gray-200);
+  border:1px solid var(--border);
+  border-radius:999px;
+  overflow:hidden;
+}
+.level-cell .level-progress .track .fill{
+  display:block; height:100%;
+  background:var(--primary-500);
+  transition:width 260ms var(--easing);
+}
+.level-cell .level-progress .meta{ color:var(--muted); font-size:14px; }
+
+/* ---- Inputs/Selects (Erfassung) ---- */
+input[type="number"], select{
+  border:1px solid var(--border);
+  border-radius:var(--radius-2);
+  background:var(--panel);
+  color:var(--ink);
+  padding:.5rem .7rem;
+}
+input[type="number"]:focus-visible, select:focus-visible{
+  outline:3px solid var(--focus);
+  outline-offset:2px;
+}
+
+/* ---- Hinweise/Legende ---- */
+.hint, .legend{ color:var(--muted); }

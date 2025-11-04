@@ -74,27 +74,28 @@ export const calc = {
     return arr.length%2 ? arr[mid] : (arr[mid-1]+arr[mid])/2;
   }
 };
+
 // --- Level-Basis (ohne Änderung am Punktesystem) ---------------------------
-// basis: 'kumulativ' | '3w' | 'egd'
-function levelScoreFromWeeks(weeks, basis = 'kumulativ') {
+// basis: 'kumulativ' | '5w' | 'rang' | 'trend'
+function levelScoreFromWeeks(weeks, basis = '5w') {
   // Wochen nach Nummer sortieren
   const ws = [...(weeks||[])].sort((a,b)=>a.woche-b.woche);
   const vals = ws.map(w => Number(w.punkte_gruppe_normalisiert || 0)); // 0..10
 
   let score = 0;
 
-  if (basis === '3w') {
-    // Summe der letzten 3 Wochen → Skala 0..30
-    const last3 = vals.slice(-3);
-    score = last3.reduce((a,b)=>a+b, 0);
-  } else if (basis === 'egd') {
-    // Exponentiell gleitend (weicher Abstieg); Skala 0..10 -> hochskalieren auf 0..30
+  if (basis === '5w' || basis === 'rang') {
+    // Summe der letzten 5 Wochen → Skala 0..50 (anzeigelogik; Level-Schwellen bleiben 10/20/30)
+    const last5 = vals.slice(-5);
+    score = last5.reduce((a,b)=>a+b, 0);
+  } else if (basis === 'trend' /* vormals 'egd' */) {
+    // Exponentiell gleitend; Skala 0..10 -> hochskalieren auf 0..30 für Level
     const alpha = 0.4;
     let s = 0;
     for (const p of vals) s = alpha * p + (1 - alpha) * s;
     score = s * 3; // vergleichbar zu 0..30
-  } else {
-    // kumulativ (heute): Summe aller normierten Wochenpunkte → theoretisch >30 möglich
+  } else { // 'kumulativ'
+    // Summe aller normierten Wochenpunkte → theoretisch >30 möglich
     score = vals.reduce((a,b)=>a+b, 0);
   }
 

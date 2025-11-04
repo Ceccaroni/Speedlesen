@@ -28,10 +28,11 @@
         <option value="egd">Gleitend (EGD)</option>
       </select>
 
-      <button id="btn-export" class="btn-primary">CSV exportieren</button>
+      <!-- JSON-Export statt CSV -->
+      <button id="btn-export-json" class="btn-primary">JSON exportieren</button>
       <button id="btn-reset" class="btn-danger">Daten zurücksetzen</button>
 
-      <!-- JSON-Import (neu, Minimal-Import B) -->
+      <!-- JSON-Import -->
       <button id="btn-import-json" class="btn-ghost">JSON importieren</button>
       <input type="file" id="import-file" accept="application/json" hidden>
     </div>
@@ -63,8 +64,7 @@
 <script type="module">
   import { Store } from "./scripts/store.js?v=10.7.2";
   import { calc } from "./scripts/calculations.js?v=10.7.2";
-  import { levelBasis } from "./scripts/calculations.js?v=10.7.2"; /* 2.2 Import ergänzt */
-  import { toCSV } from "./scripts/export.js?v=10.7.2";
+  import { levelBasis } from "./scripts/calculations.js?v=10.7.2";
   import { ui, q } from "./scripts/ui-utils.js?v=10.7.2";
 
   const store = new Store();
@@ -104,14 +104,12 @@
     tbody.innerHTML = "";
     const gruppen = await store.getGroups();
     const rows = [];
-    const basis = currentBasis(); /* 2.4 Basis verwenden */
+    const basis = currentBasis();
 
     for (const g of gruppen) {
       const weeks = await store.getGroupWeeks(g.id);
 
-      /* 2.4 Score/Level/Progress aus levelBasis */
       const L = levelBasis.fromWeeks(weeks, basis);
-
       const last = [...weeks].sort((a,b)=>b.woche-a.woche)[0];
       const recentLevelWeek = calc.lastLevelUpWeek(weeks);
       const medianW = calc.medianWcpmLastWeek(weeks);
@@ -119,7 +117,7 @@
       rows.push({
         gruppe: g.id,
         level: L.level,
-        sum: L.score, /* Anzeige entspricht gewählter Basis */
+        sum: L.score,
         lastWeek: last ? (last.punkte_gruppe_normalisiert || 0) : 0,
         progress: L.progress,
         progressNext: L.nextThreshold,
@@ -137,7 +135,6 @@
     for (const r of rows) {
       const tr = document.createElement('tr');
       const cls = r.level==="Flow-Master" ? "badge-flow" : r.level==="Speedster" ? "badge-speedster" : r.level==="Reader" ? "badge-reader" : "badge-starter";
-      // Level-Spalte inkl. Fortschrittsbalken (nur Anzeige)
       const nextName = (r.level==='Starter') ? 'Reader' : (r.level==='Reader' ? 'Speedster' : 'Flow-Master');
       const restText = (r.progressNext===null) ? 'Max-Level erreicht' : `Noch ${(r.progressNext - r.sum).toFixed(2)} Punkte bis ${nextName}`;
       tr.innerHTML = `
@@ -193,7 +190,6 @@
     });
     table.appendChild(tbody);
     host.appendChild(table);
-    /* v10.6 persons safe render */
     host.querySelectorAll('tbody tr').forEach((tr,i)=>{
       const w = weeks[i]; if(!w) return;
       const td = tr.children[2];
@@ -206,64 +202,27 @@
     });
   }
 
-  async function exportCSV(){
-    const rows = [];
-    const gruppen = await store.getGroups();
-    for (const g of gruppen){
-      const weeks = await store.getGroupWeeks(g.id);
-      for (const w of weeks){
-        for (const p of (w.personen||[])){
-          rows.push({
-          woche: w.woche,
-          gruppe: g.id,
-          anzahl: w.anzahl_personen,
-          name: p.name,
-          woerter3: p.woerter3,
-          wpm: p.wpm,
-          wps: p.wps,
-          fehler: p.fehler,
-          wcpm: p.wcpm, // "WCPM (3-Min)"
-          flagA: w.flags?.A_WPM_verbessert || false,
-          flagB: w.flags?.B_Fehler_reduziert || false,
-          flagC: w.flags?.Coaching || false,
-          flagD: w.flags?.Mission || false,
-          punkte_roh: w.punkte_gruppe_roh,
-          punkte_norm: w.punkte_gruppe_normalisiert,
-          punkte_kum: w.punkte_gruppe_kumuliert
-        });
-        }
-        rows.push({
-          woche: w.woche,
-          gruppe: g.id,
-          anzahl: w.anzahl_personen,
-          name: p.name,
-          woerter3: w.personen?.[0]?.woerter3, /* unverändert aus deiner Vorlage – Summe-Zeile */
-          wpm: w.personen?.[0]?.wpm,
-          wps: w.personen?.[0]?.wps,
-          fehler: w.personen?.[0]?.fehler,
-          wcpm: w.personen?.[0]?.wcpm,
-          flagA: w.flags?.A_WPM_verbessert || false,
-          flagB: w.flags?.B_Fehler_reduziert || false,
-          flagC: w.flags?.Coaching || false,
-          flagD: w.flags?.Mission || false,
-          punkte_roh: w.punkte_gruppe_roh,
-          punkte_norm: w.punkte_gruppe_normalisiert,
-          punkte_kum: w.punkte_gruppe_kumuliert
-        });
-      }
+  /* JSON-Export */
+  async function exportJSON(){
+    try{
+      const payload = await store.exportJSON();
+      const pretty = JSON.stringify(payload, null, 2);
+      const blob = new Blob([pretty], {type:"application/json;charset=utf-8"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const ts = new Date().toISOString().replace(/[:.]/g,'-');
+      a.href = url;
+      a.download = `speedlesen_export_${ts}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }catch(err){
+      console.error(err);
+      alert('Export fehlgeschlagen: ' + (err?.message || err));
     }
-    const csv = toCSV(rows);
-    const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = "speedlesen_export.csv";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
   }
-  q('#btn-export').addEventListener('click', exportCSV);
+  document.querySelector('#btn-export-json').addEventListener('click', exportJSON);
 
   function resetData(){
     if (!confirm("Alle lokalen Daten löschen? (Gruppen, Mitglieder, Messungen)")) return;
@@ -284,7 +243,7 @@
   }
   q('#btn-reset').addEventListener('click', resetData);
 
-  /* Minimal-Import: Listener & Import-Logik (neu) */
+  /* JSON-Import (Minimal-Import B) */
   const fileInput = document.querySelector('#import-file');
   const btnImport = document.querySelector('#btn-import-json');
 
@@ -332,7 +291,6 @@
 <!-- Schema-Wächter: direkt vor </body> -->
 <script type="module">
   import { watchSchema } from "./scripts/schema-watch.js?v=10.7.1";
-  // Erwartet das bewährte Legacy-Schema. Wenn du später migrierst, passt du die Liste an.
   watchSchema({ dbName: "speedlesen_db_v1", version: 1, expect: ["gruppen","mitglieder","messungen"] });
 </script>
 
